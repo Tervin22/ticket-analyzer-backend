@@ -1,180 +1,253 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart3, Upload, TrendingUp, Clock, CheckCircle2, Users } from "lucide-react"
+"use client"
 
-export default function HomePage() {
+import type React from "react"
+
+import { useState } from "react"
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { api } from "@/lib/api"
+import Link from "next/link"
+
+export default function UploadPage() {
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadResult, setUploadResult] = useState<{
+    success: boolean
+    message: string
+    count?: number
+  } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const validateFile = (selectedFile: File) => {
+    const fileExtension = selectedFile.name.split(".").pop()?.toLowerCase()
+    if (fileExtension === "csv" || fileExtension === "xlsx" || fileExtension === "xls") {
+      setFile(selectedFile)
+      setUploadResult(null)
+      return true
+    } else {
+      setUploadResult({
+        success: false,
+        message: "Please select a CSV or Excel file (.csv, .xlsx, .xls)",
+      })
+      return false
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (selectedFile) {
+      validateFile(selectedFile)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const droppedFile = e.dataTransfer.files?.[0]
+    if (droppedFile) {
+      validateFile(droppedFile)
+    }
+  }
+
+  const handleClickUpload = () => {
+    const fileInput = document.getElementById("file-upload") as HTMLInputElement
+    if (fileInput) {
+      fileInput.click()
+    }
+  }
+
+  const handleUpload = async () => {
+    if (!file) return
+
+    setUploading(true)
+    setUploadResult(null)
+
+    try {
+      const result = await api.uploadTickets(file)
+      setUploadResult({
+        success: true,
+        message: result.message,
+        count: result.count,
+      })
+      setFile(null)
+      const fileInput = document.getElementById("file-upload") as HTMLInputElement
+      if (fileInput) fileInput.value = ""
+    } catch (error) {
+      setUploadResult({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to upload file",
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="border-b">
-        <div className="container mx-auto px-4 py-16 md:py-24">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 text-balance">
-              Ticket Analyzer + Dashboard
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8 text-pretty">
-              Powerful analytics for your IT service desk. Upload tickets, visualize trends, and optimize your support
-              team's performance.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" asChild>
-                <Link href="/upload">
-                  <Upload className="mr-2 h-5 w-5" />
-                  Upload Tickets
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/dashboard">
-                  <BarChart3 className="mr-2 h-5 w-5" />
-                  View Dashboard
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Features Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-foreground mb-4">Key Features</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Everything you need to analyze and improve your service desk operations
-          </p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">Upload Tickets</h1>
+          <p className="text-muted-foreground">Import your service desk tickets from CSV or Excel files</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 max-w-3xl">
           <Card>
             <CardHeader>
-              <div className="p-2 bg-primary/10 rounded-lg w-fit mb-2">
-                <Upload className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Easy Import</CardTitle>
+              <CardTitle>File Upload</CardTitle>
               <CardDescription>
-                Upload tickets from CSV or Excel files with automatic parsing and validation
+                Upload a CSV or Excel file containing your ticket data. The file should include columns for title,
+                category, priority, status, technician, createdAt, and optionally resolvedAt and slaTarget.
               </CardDescription>
             </CardHeader>
+            <CardContent className="space-y-6">
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={handleClickUpload}
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-all cursor-pointer ${
+                  isDragging
+                    ? "border-primary bg-primary/5 scale-[1.02]"
+                    : "border-border hover:border-primary/50 hover:bg-accent/5"
+                }`}
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div className="p-4 bg-primary/10 rounded-full">
+                    <FileSpreadsheet className="h-8 w-8 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-primary hover:text-primary/80 font-medium">
+                      {isDragging ? "Drop file here" : "Click to choose a file"}
+                    </p>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">CSV, XLSX, or XLS files only</p>
+                </div>
+              </div>
+
+              {file && (
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <FileSpreadsheet className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium text-sm">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(2)} KB</p>
+                    </div>
+                  </div>
+                  <Button onClick={handleUpload} disabled={uploading}>
+                    {uploading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {uploadResult && (
+                <Alert variant={uploadResult.success ? "default" : "destructive"}>
+                  {uploadResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                  <AlertDescription>
+                    {uploadResult.message}
+                    {uploadResult.count && ` (${uploadResult.count} tickets imported)`}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {uploadResult?.success && (
+                <div className="flex justify-center">
+                  <Button asChild>
+                    <Link href="/dashboard">View Dashboard</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <div className="p-2 bg-primary/10 rounded-lg w-fit mb-2">
-                <BarChart3 className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Visual Analytics</CardTitle>
-              <CardDescription>
-                Interactive charts and graphs to understand ticket distribution and trends
-              </CardDescription>
+              <CardTitle>File Format Requirements</CardTitle>
+              <CardDescription>Your file should contain the following columns</CardDescription>
             </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="font-medium">Column Name</div>
+                  <div className="font-medium">Description</div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2 py-2 border-t">
+                    <div className="text-muted-foreground">title</div>
+                    <div>Ticket title or subject</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 py-2 border-t">
+                    <div className="text-muted-foreground">category</div>
+                    <div>Ticket category (e.g., Hardware, Software)</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 py-2 border-t">
+                    <div className="text-muted-foreground">priority</div>
+                    <div>Priority level (Low, Medium, High)</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 py-2 border-t">
+                    <div className="text-muted-foreground">status</div>
+                    <div>Current status (Open, In Progress, Resolved, Closed)</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 py-2 border-t">
+                    <div className="text-muted-foreground">technician</div>
+                    <div>Assigned technician name</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 py-2 border-t">
+                    <div className="text-muted-foreground">createdAt</div>
+                    <div>Ticket creation date (ISO format)</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 py-2 border-t">
+                    <div className="text-muted-foreground">resolvedAt</div>
+                    <div>Resolution date (optional, ISO format)</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 py-2 border-t">
+                    <div className="text-muted-foreground">slaTarget</div>
+                    <div>SLA target in hours (optional, default: 24)</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="p-2 bg-primary/10 rounded-lg w-fit mb-2">
-                <Clock className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Resolution Tracking</CardTitle>
-              <CardDescription>
-                Monitor average resolution times and identify bottlenecks in your workflow
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="p-2 bg-primary/10 rounded-lg w-fit mb-2">
-                <CheckCircle2 className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>SLA Compliance</CardTitle>
-              <CardDescription>Track SLA breaches and maintain high service level standards</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="p-2 bg-primary/10 rounded-lg w-fit mb-2">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Team Performance</CardTitle>
-              <CardDescription>Analyze individual technician metrics and optimize team allocation</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="p-2 bg-primary/10 rounded-lg w-fit mb-2">
-                <TrendingUp className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Trend Analysis</CardTitle>
-              <CardDescription>
-                Identify patterns and forecast future ticket volumes with historical data
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </div>
-
-      {/* How It Works Section */}
-      <div className="bg-muted/50 border-y">
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">How It Works</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">Get started in three simple steps</p>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-3 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                1
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Upload Your Data</h3>
-              <p className="text-muted-foreground text-sm">
-                Import your ticket data from CSV or Excel files. Our system automatically parses and validates the data.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                2
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Analyze Metrics</h3>
-              <p className="text-muted-foreground text-sm">
-                View comprehensive analytics including ticket volume, resolution times, and SLA compliance.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                3
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Optimize Performance</h3>
-              <p className="text-muted-foreground text-sm">
-                Use insights to improve team efficiency, reduce resolution times, and enhance customer satisfaction.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-foreground mb-4">Ready to Get Started?</h2>
-          <p className="text-muted-foreground mb-8">
-            Upload your first batch of tickets and start gaining insights into your service desk performance.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild>
-              <Link href="/upload">
-                <Upload className="mr-2 h-5 w-5" />
-                Upload Tickets Now
-              </Link>
+          <div className="flex justify-center gap-4">
+            <Button variant="outline" asChild>
+              <Link href="/">Back to Home</Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
-              <a href="/sample-tickets.csv" download>
-                Download Sample CSV
-              </a>
+            <Button asChild>
+              <Link href="/dashboard">Go to Dashboard</Link>
             </Button>
           </div>
         </div>
@@ -182,3 +255,4 @@ export default function HomePage() {
     </div>
   )
 }
+

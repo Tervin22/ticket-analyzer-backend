@@ -1,0 +1,11 @@
+title,category,priority,status,technician,createdAt,resolvedAt,slaTarget,description
+Cannot access email,Email,High,Resolved,John Smith,2025-01-05T09:00:00,2025-01-05T11:30:00,24,User unable to access Outlook email account
+Printer not working,Hardware,Medium,Resolved,Sarah Johnson,2025-01-06T10:15:00,2025-01-07T14:00:00,24,Office printer HP LaserJet not responding
+Software installation request,Software,Low,Open,Mike Davis,2025-01-08T08:30:00,,48,Need Adobe Creative Suite installed
+Network connectivity issue,Network,High,In Progress,John Smith,2025-01-09T13:00:00,,4,Unable to connect to company VPN
+Password reset,Account,High,Resolved,Sarah Johnson,2025-01-10T09:45:00,2025-01-10T10:00:00,2,User forgot Active Directory password
+Laptop running slow,Hardware,Medium,Resolved,Mike Davis,2025-01-11T11:00:00,2025-01-12T16:30:00,24,Dell laptop performance degradation
+Access to shared drive,Access,Medium,Closed,John Smith,2025-01-12T14:20:00,2025-01-12T15:00:00,8,Need permissions for finance shared folder
+Application crash,Software,High,In Progress,Sarah Johnson,2025-01-13T10:00:00,,4,CRM application crashes on startup
+New user setup,Account,Medium,Open,Mike Davis,2025-01-14T08:00:00,,24,Setup accounts for new employee
+Monitor display issues,Hardware,Low,Resolved,John Smith,2025-01-15T12:30:00,2025-01-15T14:00:00,48,External monitor flickering
